@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure PDF Signature Tool</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔐 Secure PDF Signature Tool</h1>
+            <p>Generate legally compliant electronic signatures with device verification</p>
+        </header>
+
+        <div class="progress-bar">
+            <div class="step active" data-step="1">1. Upload PDF</div>
+            <div class="step" data-step="2">2. ID Document</div>
+            <div class="step" data-step="3">3. Selfie</div>
+            <div class="step" data-step="4">4. Sign</div>
+        </div>
+
+        <!-- Step 1: PDF Upload -->
+        <div class="step-content" id="step1">
+            <div class="upload-section">
+                <h2>📄 Upload PDF Document</h2>
+                <div class="file-upload">
+                    <input type="file" id="pdfFile" accept=".pdf" required>
+                    <label for="pdfFile" class="upload-label">
+                        <span class="upload-icon">📁</span>
+                        <span class="upload-text">Choose PDF file or drag & drop</span>
+                    </label>
+                </div>
+                <div id="pdfPreview" class="preview-section"></div>
+            </div>
+        </div>
+
+        <!-- Step 2: ID Document Upload -->
+        <div class="step-content hidden" id="step2">
+            <div class="upload-section">
+                <h2>🆔 Provide Official ID Document</h2>
+                <p>You can either upload a photo of your ID or scan it using your device camera.</p>
+                
+                <div class="id-capture-options">
+                    <button id="showIdUploadBtn" class="btn btn-secondary">⬆️ Upload ID Photo</button>
+                    <button id="showIdScanBtn" class="btn btn-primary">📷 Scan ID with Camera</button>
+                </div>
+
+                <div id="idUploadSection" class="id-method-section">
+                    <h4>Upload ID Photo</h4>
+                    <div class="file-upload">
+                        <input type="file" id="idFile" accept="image/*">
+                        <label for="idFile" class="upload-label">
+                            <span class="upload-icon">🆔</span>
+                            <span class="upload-text">Choose ID Photo (Driver's License, Passport, etc.)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="idScanSection" class="id-method-section" style="display: none;">
+                    <h4>Scan ID with Camera</h4>
+                    <div class="camera-container">
+                        <video id="idVideo" autoplay muted playsinline style="width:100%; max-width:400px; border-radius: 8px; margin-bottom:10px;"></video>
+                        <canvas id="idCanvas" style="display: none;"></canvas>
+                    </div>
+                    <div class="camera-controls">
+                        <button id="startIdCameraBtn" class="btn btn-primary">📷 Start ID Camera</button>
+                        <button id="captureIdPhotoBtn" class="btn btn-success" style="display: none;">📸 Capture ID Photo</button>
+                        <button id="retakeIdPhotoBtn" class="btn btn-secondary" style="display: none;">🔄 Retake ID Photo</button>
+                    </div>
+                </div>
+                
+                <div id="idPreview" class="preview-section" style="margin-top: 20px;"></div>
+            </div>
+        </div>
+
+        <!-- Step 3: Selfie Capture -->
+        <div class="step-content hidden" id="step3">
+            <div class="camera-section">
+                <h2>🤳 Capture Selfie</h2>
+                <div class="camera-container">
+                    <video id="video" autoplay muted playsinline></video>
+                    <canvas id="canvas" style="display: none;"></canvas>
+                    <div id="selfiePreview" class="preview-section"></div>
+                </div>
+                <div class="camera-controls">
+                    <button id="startCamera" class="btn btn-primary">📷 Start Camera</button>
+                    <button id="capturePhoto" class="btn btn-success" style="display: none;">📸 Capture Photo</button>
+                    <button id="retakePhoto" class="btn btn-secondary" style="display: none;">🔄 Retake</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 4: Device Verification -->
+        <div class="step-content hidden" id="step4">
+            <div class="device-verification-section">
+                <h2>🔐 Device Verification</h2>
+                <div id="deviceInfo" class="device-info">
+                    <h3>Device Information</h3>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <label>Device ID:</label>
+                            <span id="deviceId"></span>
+                        </div>
+                        <div class="info-item">
+                            <label>Device Type:</label>
+                            <span id="deviceType"></span>
+                        </div>
+                        <div class="info-item">
+                            <label>IP Address:</label>
+                            <span id="ipAddress"></span>
+                        </div>
+                        <div class="info-item">
+                            <label>Date & Time:</label>
+                            <span id="timestamp"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 5: Signature Generation -->
+        <div class="step-content hidden" id="step5">
+            <div class="signature-section">
+                <h2>✍️ Generate Signature</h2>
+                <div class="signature-preview">
+                    <h3>Signature Preview</h3>
+                    <div class="signature-block" id="signatureBlock">
+                        <div class="signature-header">Digital Signature Block</div>
+                        <div class="signature-content">
+                            <div class="biometric-elements">
+                                <div class="element" id="idElement">
+                                    <label>ID Document:</label>
+                                    <div class="element-preview"></div>
+                                </div>
+                                <div class="element" id="selfieElement">
+                                    <label>Selfie:</label>
+                                    <div class="element-preview"></div>
+                                </div>
+                                <div class="element" id="deviceElement">
+                                    <label>Device Verification:</label>
+                                    <div class="element-preview"></div>
+                                </div>
+                            </div>
+                            <div class="signature-details">
+                                <div class="detail-row">
+                                    <span class="label">Signed by:</span>
+                                    <span class="value" id="signerName">[Digital Signature]</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="label">Compliance:</span>
+                                    <span class="value">eIDAS/ESIGN/PAdES Compatible</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="label">Timestamp:</span>
+                                    <span class="value" id="signatureTimestamp"></span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="label">Security Hash:</span>
+                                    <span class="value" id="securityHash"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="signature-options" style="margin-bottom: 20px; text-align: center;">
+                    <label style="margin-right: 15px;">
+                        <input type="radio" name="signPageOption" value="last" checked>
+                        Sign Last Page Only
+                    </label>
+                    <label>
+                        <input type="radio" name="signPageOption" value="all">
+                        Sign All Pages
+                    </label>
+                </div>
+                <div class="signature-controls">
+                    <button id="generateSignature" class="btn btn-success">✅ Generate Signed PDF</button>
+                    <button id="downloadPdf" class="btn btn-primary" style="display: none;">📥 Download Signed PDF</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="navigation">
+            <button id="prevBtn" class="btn btn-secondary" style="display: none;">← Previous</button>
+            <button id="nextBtn" class="btn btn-primary" style="display: none;">Next →</button>
+        </div>
+
+        <!-- Privacy Notice -->
+        <div class="privacy-notice">
+            <p>🔒 <strong>Privacy Guarantee:</strong> All data is processed locally and never stored or transmitted. This application operates without user accounts or data retention.</p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
