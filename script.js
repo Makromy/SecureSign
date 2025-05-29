@@ -562,18 +562,24 @@ async function createSignedPdf() {
         let idImgEmbedded, selfieImgEmbedded;
         if (idImage) {
             try {
+                console.log('Processing ID image for embedding...');
                 const idImageBytes = await dataURLToArrayBuffer(idImage);
                 idImgEmbedded = await embedImageToPdf(pdfDoc, idImageBytes, idImage);
+                if (!idImgEmbedded) console.warn('ID image embedding returned null/undefined.');
             } catch (error) {
-                console.log('Could not embed ID image:', error);
+                console.error('Error embedding ID image:', error.message, error.stack);
+                // Optionally, decide if you want to proceed without this image or throw
             }
         }
         if (selfieImage) {
             try {
+                console.log('Processing selfie image for embedding...');
                 const selfieImageBytes = await dataURLToArrayBuffer(selfieImage);
                 selfieImgEmbedded = await embedImageToPdf(pdfDoc, selfieImageBytes, selfieImage);
+                if (!selfieImgEmbedded) console.warn('Selfie image embedding returned null/undefined.');
             } catch (error) {
-                console.log('Could not embed selfie image:', error);
+                console.error('Error embedding selfie image:', error.message, error.stack);
+                // Optionally, decide if you want to proceed without this image or throw
             }
         }
 
@@ -750,49 +756,61 @@ function dataURLToArrayBuffer(dataURL) {
 }
 
 async function embedImageToPdf(pdfDoc, imageBytes, dataURL) {
+    console.log('Attempting to embed image. MimeType from dataURL:', dataURL.substring(0, 30));
     try {
-        // Determine image format from data URL
         const mimeType = dataURL.split(',')[0].split(':')[1].split(';')[0];
-        
+        console.log(`Determined MIME type: ${mimeType}`);
+
         if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') {
+            console.log('Embedding as JPG directly.');
             return await pdfDoc.embedJpg(imageBytes);
         } else if (mimeType === 'image/png') {
+            console.log('Embedding as PNG directly.');
             return await pdfDoc.embedPng(imageBytes);
         } else {
-            // Try to convert to JPEG format
+            console.log(`Unsupported MIME type ${mimeType}, attempting conversion to JPEG.`);
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             const img = new Image();
-            
+
             return new Promise((resolve, reject) => {
                 img.onload = async () => {
+                    console.log('Image loaded for conversion. Dimensions:', img.width, 'x', img.height);
                     canvas.width = img.width;
                     canvas.height = img.height;
                     ctx.drawImage(img, 0, 0);
                     
                     canvas.toBlob(async (blob) => {
+                        if (!blob) {
+                            console.error('Canvas toBlob returned null. Conversion failed.');
+                            reject(new Error('Canvas toBlob failed for image conversion.'));
+                            return;
+                        }
                         try {
+                            console.log('Image converted to blob, attempting to embed as JPG.');
                             const jpegBytes = await blob.arrayBuffer();
                             const embeddedImage = await pdfDoc.embedJpg(jpegBytes);
+                            console.log('Image successfully converted and embedded.');
                             resolve(embeddedImage);
-                        } catch (error) {
-                            console.log('Failed to convert and embed image:', error);
-                            resolve(null);
+                        } catch (conversionError) {
+                            console.error('Failed to embed converted image:', conversionError);
+                            reject(conversionError); // Reject with the error
                         }
-                    }, 'image/jpeg', 0.8);
+                    }, 'image/jpeg', 0.85); // Slightly higher quality for conversion
                 };
-                
-                img.onerror = () => {
-                    console.log('Failed to load image for conversion');
-                    resolve(null);
+
+                img.onerror = (error) => {
+                    console.error('Failed to load image for conversion. Image src (first 30 chars):', dataURL.substring(0,30), error);
+                    reject(new Error('Image loading failed during conversion attempt.'));
                 };
                 
                 img.src = dataURL;
             });
         }
-    } catch (error) {
-        console.log('Image embedding error:', error);
-        return null;
+    } catch (embeddingError) {
+        console.error('Overall image embedding error:', embeddingError);
+        // Ensure a promise rejection if an error occurs outside the explicit promise paths
+        return Promise.reject(embeddingError);
     }
 }
 
